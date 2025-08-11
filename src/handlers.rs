@@ -4,8 +4,9 @@
 use std::str::FromStr;
 
 use actix_web::{web, HttpResponse, Responder};
+use serde::{Deserialize, Serialize};
 use solana_client::nonblocking::rpc_client::RpcClient;
-use solana_sdk::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey};
+use solana_sdk::{client, native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signature::read_keypair_file, signer::Signer, system_instruction, transaction::Transaction};
 
 pub async fn get_balance(path: web::Path<String>) -> impl Responder {
     let pubkey_str = path.into_inner();
@@ -27,3 +28,60 @@ pub async fn get_balance(path: web::Path<String>) -> impl Responder {
         Err(e) => HttpResponse::InternalServerError().body(format!("Error: {:?}", e)),
     }
 }
+
+// now the POST logic where we send some test sol 
+#[derive(Deserialize)]
+pub struct TransactionParams {
+    payer_id: String,
+    reciever_id: String,
+    amount_in_sol: f64
+}
+
+pub async fn post(req: web::Json<TransactionParams>) -> impl Responder{
+    // step 1: load the sender keypair (Private key)
+    let payers_keypair = match read_keypair_file(&req.payer_id) {
+        Ok(kp) => kp,
+        Err(_) => return HttpResponse::BadRequest().body("Invalid keypair path"),
+    };
+
+    // step 2: parse the reciever's pubkey
+    let reciever_pubkey = match Pubkey::from_str(&req.reciever_id) {
+        Ok(pk) => pk,
+        Err(_) => return HttpResponse::BadRequest().body("Invalid receiver public key")
+    };
+
+    // the amounts to be sent in SOL 
+    let lamports = (req.amount_in_sol * LAMPORTS_PER_SOL as f64) as u64;
+    let rpc_url = "https://api.devnet.solana.com".to_string();
+    let client = RpcClient::new(rpc_url.to_string());
+
+    // get the recent blockhash 
+    let recent_blockhash = match client.get_latest_blockhash().await {
+        Ok(bh) => bh,
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Error: {:?}", e)),
+    };
+
+    // create the transfer instruction 
+    let tx_instr = system_instruction::transfer(&payers_keypair.pubkey(), &reciever_pubkey, lamports);
+
+    // create the transaction
+    let tx = Transaction::new_signed_with_payer(&[tx_instr], Some(&payers_keypair.pubkey()), &[&payers_keypair], recent_blockhash) ;
+
+    // send / make the transaction 
+    match client.send_and_confirm_transaction(&tx).await {
+        Ok(sig) => {
+            // fetch balances after transactions 
+            let sender_balance = 
+            client.get_balance(&payers_keypair.pubkey()).await.unwrap_or_default() as f64 / LAMPORTS_PER_SOL as f64;
+
+            let receiver_balance = client.get_balance(&reciever_pubkey).await.unwrap_or_default() as f64 / LAMPORTS_PER_SOL as f64;
+
+            HttpResponse::Ok().json(serde_json::json!({
+                "signature": sig.to_string(),
+                "sender_balance_sol": sender_balance,
+                "receiver_balance_sol": receiver_balance
+            }))
+        }
+        Err(e) => HttpResponse::InternalServerError().body(format!("Transaction failed: {:?}", e)),
+    }   
+}  

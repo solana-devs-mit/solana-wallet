@@ -15,6 +15,7 @@ async fn main() -> Result<()> {
     HttpServer::new(|| {
         App::new()
         .route("/balance/{pubkey}", web::get().to(handlers::get_balance))
+        .route("/transaction", web::post().to(handlers::post))
     })
     .bind("127.0.0.1:8080")?
     .run()
