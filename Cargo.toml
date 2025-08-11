@@ -1,0 +1,11 @@
+[package]
+name = "solana-wallet"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = "4.11.0"
+anyhow = "1.0.98"
+solana-client = "2.3.7"
+solana-sdk = "2.3.1"
+tokio = { version = "1.47.1", features = ["full"] }
