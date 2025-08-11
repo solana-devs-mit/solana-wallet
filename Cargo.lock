@@ -5280,6 +5280,8 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "anyhow",
+ "serde",
+ "serde_json",
  "solana-client",
  "solana-sdk",
  "tokio",
