@@ -1,13 +1,16 @@
 // here I'll write the handlers logic 
 // GET POST handlers 
-
+#![allow(unused_variables)]
 use std::str::FromStr;
 
 use actix_web::{web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{client, native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signature::read_keypair_file, signer::Signer, system_instruction, transaction::Transaction};
+use solana_transaction_status::UiTransactionEncoding;
 
+
+// GET req 
 pub async fn get_balance(path: web::Path<String>) -> impl Responder {
     let pubkey_str = path.into_inner();
     let pubkey = match Pubkey::from_str(&pubkey_str) {
@@ -37,6 +40,7 @@ pub struct TransactionParams {
     amount_in_sol: f64
 }
 
+// POST req
 pub async fn post(req: web::Json<TransactionParams>) -> impl Responder{
     // step 1: load the sender keypair (Private key)
     let payers_keypair = match read_keypair_file(&req.payer_id) {
@@ -85,3 +89,69 @@ pub async fn post(req: web::Json<TransactionParams>) -> impl Responder{
         Err(e) => HttpResponse::InternalServerError().body(format!("Transaction failed: {:?}", e)),
     }   
 }  
+
+// GET req 
+pub async fn get_transaction_history(path: web::Path<String>) -> impl Responder {
+    // now I'll have to get the wallet id / public key of the wallet and then pattern match the clint 
+    let pubkey_str = path.into_inner();
+    let pubkey = match Pubkey::from_str(&pubkey_str) {
+        Ok(pk) => pk,
+        Err(_) => return HttpResponse::BadRequest().body("Invalid public key"),
+    };
+
+    let rpc_url = "https://api.devnet.solana.com".to_string();
+    let client = RpcClient::new(rpc_url.to_string());
+
+    // now call function call on the client,
+    let transactions = match client.get_signatures_for_address(&pubkey).await {
+        Ok(trans) => trans,
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Error {:?}", e)),
+    };
+    HttpResponse::Ok().json(transactions)
+}   
+
+
+// GET req
+pub async fn get_full_transaction_history(path: web::Path<String>) -> impl Responder {
+
+    // first check if url is correct 
+    let pubkey_str = path.into_inner();
+    let pubkey = match Pubkey::from_str(&pubkey_str) {
+        Ok(pk) => pk,
+        Err(_) => return HttpResponse::BadRequest().body("Invalid public key!")
+    };
+
+    // connect to solana devnet & client solana client
+    let rpc_url = "https://api.devnet.solana.com".to_string();
+    let client = RpcClient::new(rpc_url.to_string());
+
+    // get recent signature from public address via the .gettransactionviaaddress method 
+    let signatures = match client.get_signatures_for_address(&pubkey).await {
+        Ok(sigs) => sigs,
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to fetch transactions: {:?}", e)),
+    };
+
+    // then have to loop through each signature and then fetch transactions 
+    let mut transactions = Vec::new();
+    for sig_info in signatures {
+        let sig = match sig_info.signature.parse() {
+            Ok(s) => s,
+            Err(e) => {
+                // skip invalid signature
+                continue;
+            }
+        };
+
+        match client.get_transaction(&sig, UiTransactionEncoding::JsonParsed).await {
+            Ok(tx) => {
+                transactions.push(tx);
+            }
+            Err(e) => {
+                // Optionally, you can push error info or skip
+                continue;
+            }
+        }
+    }
+
+    HttpResponse::Ok().json(transactions)
+}
