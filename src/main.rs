@@ -1,5 +1,6 @@
 #![allow(deprecated, unused_imports)]
 use std::{io::Result, str::FromStr};
+use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{
@@ -12,8 +13,16 @@ mod handlers;
 #[actix_web::main]
 async fn main() -> Result<()> {
     // start the HttpServer 
-    HttpServer::new(|| {
+    // cors configuration
+    HttpServer::new(move || {
+        let cors = Cors::default()
+            .allow_any_header()
+            .allow_any_method()
+            .allow_any_origin()
+            .max_age(3600);
+
         App::new()
+        .wrap(cors)
         .route("/balance/{pubkey}", web::get().to(handlers::get_balance))
         .route("/transfer", web::post().to(handlers::transaction))
         .route("/transaction/{pubkey}", web::get().to(handlers::get_transaction_history))
