@@ -122,7 +122,7 @@ Fetches recent signatures for the given address, then retrieves full transaction
 
 **Request**
 ```
-GET /transactions/{pubkey}
+GET /transaction/{pubkey}
 ```
 
 **Example Response**
