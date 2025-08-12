@@ -41,7 +41,7 @@ pub struct TransactionParams {
 }
 
 // POST req
-pub async fn post(req: web::Json<TransactionParams>) -> impl Responder{
+pub async fn transaction(req: web::Json<TransactionParams>) -> impl Responder{
     // step 1: load the sender keypair (Private key)
     let payers_keypair = match read_keypair_file(&req.payer_id) {
         Ok(kp) => kp,

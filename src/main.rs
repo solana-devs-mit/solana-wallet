@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
     HttpServer::new(|| {
         App::new()
         .route("/balance/{pubkey}", web::get().to(handlers::get_balance))
-        .route("/transaction", web::post().to(handlers::post))
+        .route("/transaction", web::post().to(handlers::transaction))
         .route("/transaction/{pubkey}", web::get().to(handlers::get_transaction_history))
         .route("/transaction/full/{pubkey}", web::get().to(handlers::get_full_transaction_history))
     })
