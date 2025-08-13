@@ -10,6 +10,11 @@ use solana_sdk::{client, native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signatu
 use solana_transaction_status::UiTransactionEncoding;
 
 
+fn get_rpc_url() -> String {
+    std::env::var("SOLANA_RPC_URL")
+        .unwrap_or_else(|_| "https://api.devnet.solana.com".to_string())
+}
+
 // GET req 
 pub async fn get_balance(path: web::Path<String>) -> impl Responder {
     let pubkey_str = path.into_inner();
@@ -18,7 +23,7 @@ pub async fn get_balance(path: web::Path<String>) -> impl Responder {
         Err(_) => return HttpResponse::BadRequest().body("Invalid public key"),
     };
 
-    let rpc_url = "https://api.devnet.solana.com".to_string();
+    let rpc_url = get_rpc_url();
     let client = RpcClient::new(rpc_url.to_string());
     match client.get_balance(&pubkey).await {
         Ok(balance_lamports) => {
@@ -56,7 +61,7 @@ pub async fn transaction(req: web::Json<TransactionParams>) -> impl Responder{
 
     // the amounts to be sent in SOL 
     let lamports = (req.amount_in_sol * LAMPORTS_PER_SOL as f64) as u64;
-    let rpc_url = "https://api.devnet.solana.com".to_string();
+    let rpc_url = get_rpc_url();
     let client = RpcClient::new(rpc_url.to_string());
 
     // get the recent blockhash 
@@ -99,7 +104,7 @@ pub async fn get_transaction_history(path: web::Path<String>) -> impl Responder 
         Err(_) => return HttpResponse::BadRequest().body("Invalid public key"),
     };
 
-    let rpc_url = "https://api.devnet.solana.com".to_string();
+    let rpc_url = get_rpc_url();
     let client = RpcClient::new(rpc_url.to_string());
 
     // now call function call on the client,
@@ -122,7 +127,7 @@ pub async fn get_full_transaction_history(path: web::Path<String>) -> impl Respo
     };
 
     // connect to solana devnet & client solana client
-    let rpc_url = "https://api.devnet.solana.com".to_string();
+    let rpc_url = get_rpc_url();
     let client = RpcClient::new(rpc_url.to_string());
 
     // get recent signature from public address via the .gettransactionviaaddress method 

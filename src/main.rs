@@ -6,12 +6,17 @@ use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{
     native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signature::{read_keypair_file, Keypair, Signer}, system_instruction, transaction::Transaction
 };
+use std::env;
 
 // add the handlers module 
 mod handlers;
 
 #[actix_web::main]
 async fn main() -> Result<()> {
+    // Get port from environment or default to 8080
+    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let host = "0.0.0.0"; // <CHANGE> Changed from 127.0.0.1 to accept external connections
+
     // start the HttpServer 
     // cors configuration
     HttpServer::new(move || {
@@ -28,7 +33,7 @@ async fn main() -> Result<()> {
         .route("/transaction/{pubkey}", web::get().to(handlers::get_transaction_history))
         .route("/transaction/full/{pubkey}", web::get().to(handlers::get_full_transaction_history))
     })
-    .bind("127.0.0.1:8080")?
+    .bind(format!("{}:{}", host, port))?
     .run()
     .await
 }
