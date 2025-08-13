@@ -1,0 +1,11 @@
+# Ignore build artifacts and unnecessary files
+target/
+Cargo.lock
+.git/
+.gitignore
+README.md
+.env
+.env.local
+node_modules/
+*.log
+.DS_Store
