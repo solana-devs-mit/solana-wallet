@@ -134,7 +134,7 @@ pub async fn get_full_transaction_history(path: web::Path<String>) -> impl Respo
     let signatures = match client.get_signatures_for_address(&pubkey).await {
         Ok(sigs) => sigs,
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to fetch transactions: {:?}", e)),
-    };
+    }; 
 
     // then have to loop through each signature and then fetch transactions 
     let mut transactions = Vec::new();
